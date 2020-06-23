@@ -1,6 +1,7 @@
 package me.maestone.demospringsecurityform.config;
 
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
@@ -17,5 +18,14 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                 .anyRequest().authenticated();
         http.formLogin();
         http.httpBasic();
+    }
+
+    @Override
+    protected void configure(AuthenticationManagerBuilder auth) throws Exception {
+        auth.inMemoryAuthentication()
+                // {noop} --> 123을 암호화 하지 않음
+                .withUser("user").password("{noop}123").roles("USER")
+                .and()
+                .withUser("admin").password("{noop}!@#").roles("ADMIN");
     }
 }
