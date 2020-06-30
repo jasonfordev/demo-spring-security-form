@@ -168,3 +168,40 @@
         }
     }
   ```
+    
+  8. PasswordEncoder
+  
+  ```java
+    [DemoSpringSecurityFormApplication.java]
+    
+    // 비추: 비밀번호가 평문 그대로 저장됩니다.
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+      return NoOpPasswordEncoder.getInstance();
+    }
+
+    // 추천: 기본 전략인 bcrypt로 암호화 해서 저장하며 비교할 때는 {id}를 확인해서 다양한 인코딩을 지원합니다.
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+      return PasswordEncoderFactories.createDelegatingPasswordEncoder();
+    }
+  ```
+  
+  ```java
+    [AccountService.java]
+    
+    @Autowired PasswordEncoder passwordEncoder;
+    
+    public Account createNew(Account account) {
+        account.encodePassword(passwordEncoder);
+        return accountRepository.save(account);
+    }
+  ```
+    
+  ```java
+    [Account.java]
+    
+    public void encodePassword(PasswordEncoder passwordEncoder) {
+        this.password = passwordEncoder.encode(this.password);
+    }
+  ```
