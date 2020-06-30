@@ -34,4 +34,137 @@
         }
     }
   ```
+  
+  6. 인메모리 유저 추가
+  
+    방법1) application.properties에 추가
+  ```yml
+      spring.security.user.name=admin
+      spring.security.user.password=123
+      spring.security.user.roles=ADMIN
+  ```
     
+    방법2) WebSecurityConfigurerAdapter 커스터마이징
+  ```java
+    @Override
+    protected void configure(AuthenticationManagerBuilder auth) throws Exception {
+        auth.inMemoryAuthentication()
+                // {noop} --> 123을 암호화 하지 않음
+                .withUser("user").password("{noop}123").roles("USER")
+                .and()
+                .withUser("admin").password("{noop}!@#").roles("ADMIN");
+    }
+  ```
+  
+  7. JPA 연동
+  ```
+    7-1. 의존성 추가
+    
+      compile 'org.springframework.boot:spring-boot-starter-data-jpa'
+      runtime 'com.h2database:h2'
+  ```  
+  ```      
+    7-2. Entity, Repository, Service, Controller 생성
+  ```
+  
+  ```java
+    @Entity
+    public class Account {
+        @Id
+        @GeneratedValue(strategy = GenerationType.IDENTITY)
+        private Integer id;
+
+        @Column(unique = true)
+        private String username;
+
+        private String password;
+
+        private String role;
+
+        public Integer getId() {
+            return id;
+        }
+
+        public void setId(Integer id) {
+            this.id = id;
+        }
+
+        public String getUsername() {
+            return username;
+        }
+
+        public void setUsername(String username) {
+            this.username = username;
+        }
+
+        public String getPassword() {
+            return password;
+        }
+
+        public void setPassword(String password) {
+            this.password = password;
+        }
+
+        public String getRole() {
+            return role;
+        }
+
+        public void setRole(String role) {
+            this.role = role;
+        }
+        
+        public void encodePassword() {
+            this.password = "{noop}" + this.password;
+        }
+    }
+  ```
+    
+    
+  ```java
+    public interface AccountRepository extends JpaRepository<Account, Integer> {
+        Account findByUsername(String username);
+    }
+  ```
+    
+    
+  ```java
+    @Service
+    public class AccountService implements UserDetailsService {
+
+        @Autowired
+        AccountRepository accountRepository;
+
+        @Override
+        public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+            Account account = accountRepository.findByUsername(username);
+            if (account == null) {
+                throw new UsernameNotFoundException(username);
+            }
+
+            return User.builder()
+                    .username(account.getUsername())
+                    .password(account.getPassword())
+                    .roles(account.getRole())
+                    .build();
+        }
+        
+        public Account createNew(Account account) {
+            account.encodePassword();
+            return accountRepository.save(account);
+        }
+    }
+  ```
+  
+  ```java
+    @RestController
+    public class AccountController {
+
+        @Autowired
+        AccountService accountService;
+
+        @GetMapping("/account/{role}/{username}/{password}")
+        public Account createAccount(@ModelAttribute Account account) {
+            return accountService.createNew(account);
+        }
+    }
+  ```
